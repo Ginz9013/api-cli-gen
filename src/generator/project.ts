@@ -49,7 +49,7 @@ export async function writeProject(opts: {
   write(path.join(outputDir, 'src', 'lib', 'config.ts'), genLibConfig(cliName))
   write(path.join(outputDir, 'src', 'lib', 'client.ts'), genLibClient())
   write(path.join(outputDir, 'src', 'utils', 'output.ts'), genUtilsOutput())
-  write(path.join(outputDir, 'src', 'commands', 'config.ts'), genConfigCommand())
+  write(path.join(outputDir, 'src', 'commands', 'config.ts'), genConfigCommand(parsed))
   write(path.join(outputDir, 'src', 'commands', 'list.ts'), genListCommand(parsed))
 
   for (const [tag, endpoints] of byTag) {
