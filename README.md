@@ -1,12 +1,18 @@
 # api-cli-gen
 
-Generate a fully functional API CLI from any OpenAPI spec in seconds.
+**Generate a fully functional API CLI from any OpenAPI spec in seconds.**
 
-`api-cli-gen` 是一個 TypeScript CLI 工具，接受一份 OpenAPI 規格文件（本地檔案或遠端 URL），自動產生一個可直接使用的 API CLI 工具專案，包含設定管理、認證、列出所有 endpoint，以及依規格動態產生的 API 指令。
+[English](#) | [繁體中文](./README.zh-TW.md)
 
 ---
 
-## 安裝
+## Overview
+
+`api-cli-gen` is a TypeScript CLI tool that takes an OpenAPI spec (local file or remote URL) and generates a ready-to-use API CLI project — complete with config management, authentication, endpoint listing, and dynamically generated commands per tag/operation.
+
+---
+
+## Installation
 
 ```bash
 npm install -g api-cli-gen
@@ -14,20 +20,20 @@ npm install -g api-cli-gen
 
 ---
 
-## 快速開始
+## Quick Start
 
 ```bash
-# 從本地 spec 產生
+# Generate from a local spec file
 api-cli-gen generate ./petstore.json --name petstore
 
-# 從遠端 URL 產生
+# Generate from a remote URL
 api-cli-gen generate https://petstore3.swagger.io/api/v3/openapi.json --name petstore
 
-# 預覽會產生哪些指令（不實際寫入檔案）
+# Preview commands that would be generated (no files written)
 api-cli-gen preview https://petstore3.swagger.io/api/v3/openapi.json
 ```
 
-產生完成後，進入產生目錄即可使用：
+Once generated, use the CLI directly:
 
 ```bash
 cd generated/petstore
@@ -40,89 +46,89 @@ petstore pet getPetById '{"path":{"petId":1}}'
 
 ---
 
-## Generator 指令
+## Generator Commands
 
 ### `generate <spec>`
 
-從 OpenAPI spec 產生完整 CLI 專案，並自動安裝依賴、編譯。
+Generate a full CLI project from an OpenAPI spec. Automatically installs dependencies and builds.
 
 ```bash
 api-cli-gen generate <spec> [options]
 
 Arguments:
-  spec                  本地 .json / .yaml 檔案路徑，或遠端 URL
+  spec                  Path to a local .json / .yaml file, or a remote URL
 
 Options:
-  -o, --output <dir>    輸出目錄（預設：./generated/<cli-name>）
-  -n, --name <name>     CLI binary 名稱（預設：從 spec info.title 推導）
+  -o, --output <dir>    Output directory (default: ./generated/<cli-name>)
+  -n, --name <name>     CLI binary name (default: derived from spec info.title)
 ```
 
 ### `preview <spec>`
 
-解析 spec 並列出所有會產生的指令，不寫入任何檔案。
+Parse the spec and list all commands that would be generated — without writing any files.
 
 ```bash
 api-cli-gen preview <spec> [options]
 
 Options:
-  -n, --name <name>     CLI binary 名稱
+  -n, --name <name>     CLI binary name
 ```
 
 ### `update <spec>`
 
-對既有的產生目錄重新產生（覆蓋 src 原始碼、重新編譯，保留 node_modules）。
+Re-generate an existing CLI project (overwrites source files and rebuilds, preserves node_modules).
 
 ```bash
 api-cli-gen update <spec> [options]
 
 Options:
-  -o, --output <dir>    輸出目錄
-  -n, --name <name>     CLI binary 名稱
+  -o, --output <dir>    Output directory
+  -n, --name <name>     CLI binary name
 ```
 
 ---
 
-## 產生的 CLI 使用說明
+## Generated CLI Usage
 
-### 設定管理
+### Config Management
 
 ```bash
-# 設定 API base URL
+# Set the API base URL
 <cli> config set base-url https://api.example.com
 
-# 設定認證（四種方式）
+# Set authentication
 <cli> config set auth bearer <token>
-<cli> config set auth token <token>          # 不含 Bearer 前綴的原始 token
-<cli> config set auth apikey <key>           # 預設使用 X-API-Key header
+<cli> config set auth token <token>           # raw token, no "Bearer" prefix
+<cli> config set auth apikey <key>            # default: X-API-Key header
 <cli> config set auth apikey <key> --header X-Custom-Header
 <cli> config set auth basic <username> <password>
 
-# 查看目前設定
+# View current config (tokens are masked)
 <cli> config show
 
-# 清除所有設定
+# Clear all config
 <cli> config reset
 ```
 
-> 設定儲存於 `~/.config/<cli-name>/config.json`，token 顯示時會自動遮蔽。
+> Config is stored at `~/.config/<cli-name>/config.json`.
 
-### 列出所有 Endpoint
+### List Endpoints
 
 ```bash
-<cli> list                    # 列出所有 API（依 tag 分組）
-<cli> list --tag pet          # 過濾特定 tag
-<cli> list --output json      # 輸出 JSON 格式
+<cli> list                    # List all endpoints grouped by tag
+<cli> list --tag pet          # Filter by tag
+<cli> list --output json      # Output as JSON
 ```
 
-### 呼叫 API
+### Calling APIs
 
-所有 API 指令的參數統一以單一 JSON 字串傳入：
+All API commands accept a single JSON argument:
 
 ```
 <cli> <tag> <operationId> '<json>' [options]
 ```
 
-JSON 結構：
+JSON structure:
 
 ```json
 {
@@ -132,43 +138,43 @@ JSON 結構：
 }
 ```
 
-#### 範例
+#### Examples
 
 ```bash
-# 僅 path param
+# Path parameter
 petstore pet getPetById '{"path":{"petId":1}}'
 
-# 僅 query param
+# Query parameter
 petstore pet findByStatus '{"query":{"status":"available"}}'
 
-# 僅 request body
+# Request body
 petstore pet addPet '{"body":{"name":"doggie","status":"available"}}'
 
-# path + body 混合
+# Mixed: path + body
 petstore pet updatePet '{"path":{"petId":1},"body":{"name":"updated"}}'
 
-# 從檔案讀取參數
+# Load params from a file
 petstore pet addPet @payload.json
 
-# 無參數
+# No params
 petstore store getInventory '{}'
 ```
 
-#### 輸出格式
+#### Output Format
 
 ```bash
-<cli> <tag> <operationId> '{}' --output table    # 表格（預設）
+<cli> <tag> <operationId> '{}' --output table    # table (default)
 <cli> <tag> <operationId> '{}' --output json     # JSON
-<cli> <tag> <operationId> '{}' --output raw      # 原始字串
+<cli> <tag> <operationId> '{}' --output raw      # raw string
 ```
 
-#### Verbose 模式
+#### Verbose Mode
 
 ```bash
 <cli> <tag> <operationId> '{}' --verbose
 ```
 
-顯示實際送出的 HTTP 請求資訊：
+Prints the actual HTTP request being sent:
 
 ```
 [GET] https://api.example.com/api/rooms
@@ -177,45 +183,45 @@ Authorization: Bearer eyJhbGci***n6Yw
 
 ---
 
-## 認證說明
+## Authentication
 
-產生的 CLI 無論 OpenAPI spec 的 `securitySchemes` 有無宣告，皆支援以下四種認證方式：
+All four auth types are always available in the generated CLI, regardless of what is declared in the spec's `securitySchemes`:
 
-| 指令 | 傳送方式 |
-|------|----------|
+| Command | Sends |
+|---------|-------|
 | `auth bearer <token>` | `Authorization: Bearer <token>` |
-| `auth token <token>` | `Authorization: <token>`（無前綴） |
-| `auth apikey <key>` | `X-API-Key: <key>`（header 或 query） |
+| `auth token <token>` | `Authorization: <token>` (no prefix) |
+| `auth apikey <key>` | `X-API-Key: <key>` (header or query param) |
 | `auth basic <user> <pass>` | `Authorization: Basic <base64>` |
 
-若 spec 有宣告 `securitySchemes`，執行 `config show` 時會顯示該 API 建議的認證方式。
+If the spec declares `securitySchemes`, `config show` will display the recommended auth method for that API.
 
 ---
 
-## 支援的 OpenAPI 版本
+## Supported OpenAPI Versions
 
 - OpenAPI 3.0.x
 - Swagger 2.0
 
-支援本地 `.json` / `.yaml` 檔案，以及遠端 URL。
+Accepts local `.json` / `.yaml` files and remote URLs.
 
 ---
 
-## 專案結構
+## Project Structure
 
 ```
 api-cli-gen/
 ├── src/
-│   ├── index.ts              ← CLI entry（generate / preview / update）
+│   ├── index.ts              ← CLI entry (generate / preview / update)
 │   ├── parser/
-│   │   ├── loader.ts         ← 從檔案 / URL 載入並 parse spec
-│   │   └── analyzer.ts       ← 解析 paths、tags、params、security
+│   │   ├── loader.ts         ← Load and parse spec from file or URL
+│   │   └── analyzer.ts       ← Extract paths, tags, params, security
 │   ├── generator/
-│   │   ├── index.ts          ← 統籌產生流程
-│   │   ├── commands.ts       ← 產生動態 API commands 程式碼
-│   │   ├── config.ts         ← 產生 config command 程式碼
-│   │   ├── list.ts           ← 產生 list command 程式碼
-│   │   └── project.ts        ← 寫出檔案、執行 npm install & build
+│   │   ├── index.ts          ← Orchestrate generation flow
+│   │   ├── commands.ts       ← Generate dynamic API command source
+│   │   ├── config.ts         ← Generate config command source
+│   │   ├── list.ts           ← Generate list command source
+│   │   └── project.ts        ← Write files, run npm install & build
 │   └── templates/
 │       ├── packageJson.ts
 │       ├── tsconfig.ts
@@ -224,31 +230,31 @@ api-cli-gen/
 │       ├── libConfig.ts
 │       ├── libClient.ts
 │       └── utilsOutput.ts
-└── dist/                     ← 編譯輸出（npm 發佈內容）
+└── dist/                     ← Compiled output (published to npm)
 ```
 
 ---
 
 ## Tech Stack
 
-### Generator 本體
+### Generator
 
-| 項目 | 套件 |
-|------|------|
-| 語言 | TypeScript |
+| | Package |
+|-|---------|
+| Language | TypeScript |
 | CLI framework | `commander` |
-| OpenAPI 解析 | `@apidevtools/swagger-parser` |
-| YAML 解析 | `js-yaml` |
-| 打包 | `tsup` |
+| OpenAPI parser | `@apidevtools/swagger-parser` |
+| YAML support | `js-yaml` |
+| Bundler | `tsup` |
 
-### 產生的 CLI
+### Generated CLI
 
-| 項目 | 套件 |
-|------|------|
+| | Package |
+|-|---------|
 | CLI framework | `commander` |
-| HTTP | `axios` |
-| 顏色輸出 | `chalk` |
-| 打包 | `esbuild` |
+| HTTP client | `axios` |
+| Terminal colors | `chalk` |
+| Bundler | `esbuild` |
 
 ---
 
