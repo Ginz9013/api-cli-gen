@@ -12,7 +12,7 @@ import { genLibClient } from '../templates/libClient.js'
 import { genUtilsOutput } from '../templates/utilsOutput.js'
 import { genConfigCommand } from './config.js'
 import { genListCommand } from './list.js'
-import { genTagCommand, capitalize } from './commands.js'
+import { genTagCommand, toSafeTagName } from './commands.js'
 
 function write(filePath: string, content: string): void {
   fs.mkdirSync(path.dirname(filePath), { recursive: true })
@@ -53,7 +53,7 @@ export async function writeProject(opts: {
   write(path.join(outputDir, 'src', 'commands', 'list.ts'), genListCommand(parsed))
 
   for (const [tag, endpoints] of byTag) {
-    write(path.join(outputDir, 'src', 'commands', `${tag}.ts`), genTagCommand(tag, endpoints))
+    write(path.join(outputDir, 'src', 'commands', `${toSafeTagName(tag)}.ts`), genTagCommand(tag, endpoints))
   }
 
   // ── Install & build ────────────────────────────────────────────────────────

@@ -1,16 +1,16 @@
 import type { ParsedSpec } from '../types.js'
-
-export function capitalize(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1)
-}
+import { toSafeTagName, toSafeFunctionName } from '../generator/commands.js'
 
 export function genMainEntry(cliName: string, parsed: ParsedSpec, tags: string[]): string {
   const imports = tags
-    .map((tag) => `import { create${capitalize(tag)}Command } from './commands/${tag}.js'`)
+    .map(
+      (tag) =>
+        `import { create${toSafeFunctionName(tag)}Command } from './commands/${toSafeTagName(tag)}.js'`,
+    )
     .join('\n')
 
   const addCommands = tags
-    .map((tag) => `program.addCommand(create${capitalize(tag)}Command())`)
+    .map((tag) => `program.addCommand(create${toSafeFunctionName(tag)}Command())`)
     .join('\n')
 
   return `import { Command } from 'commander'

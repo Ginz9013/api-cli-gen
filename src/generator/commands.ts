@@ -4,6 +4,22 @@ export function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
+/** tag → safe file/command name  e.g. "websocket / rooms" → "websocket-rooms" */
+export function toSafeTagName(tag: string): string {
+  return tag
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
+/** tag → safe PascalCase function name  e.g. "websocket / rooms" → "WebsocketRooms" */
+export function toSafeFunctionName(tag: string): string {
+  return toSafeTagName(tag)
+    .split('-')
+    .map(capitalize)
+    .join('')
+}
+
 // Build a URL expression string for the generated TypeScript code.
 // e.g. /pet/{petId} → `\`/pet/\${params.path?.['petId']}\``
 function buildUrlExpr(urlPath: string): string {
@@ -79,6 +95,8 @@ ${validations}
 
 export function genTagCommand(tag: string, endpoints: Endpoint[]): string {
   const operations = endpoints.map((ep) => genOperation(ep)).join('\n')
+  const safeName = toSafeTagName(tag)
+  const fnName = toSafeFunctionName(tag)
 
   return `import { Command } from 'commander'
 import { createClient } from '../lib/client.js'
@@ -94,8 +112,8 @@ function parseParams(arg) {
   return JSON.parse(arg)
 }
 
-export function create${capitalize(tag)}Command() {
-  const cmd = new Command('${tag}').description('${tag} operations')
+export function create${fnName}Command() {
+  const cmd = new Command('${safeName}').description(${JSON.stringify(tag + ' operations')})
 ${operations}
 
   return cmd
