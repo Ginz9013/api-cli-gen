@@ -41,7 +41,7 @@ export interface SecurityScheme {
 
 export interface GenerateOptions {
   spec: string
-  output: string
+  output?: string
   name?: string
   update?: boolean
 }

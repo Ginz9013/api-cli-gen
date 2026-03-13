@@ -14,9 +14,9 @@ program
   .command('generate')
   .description('Generate a CLI project from an OpenAPI spec')
   .argument('<spec>', 'Path to OpenAPI spec file (.json/.yaml) or URL')
-  .option('-o, --output <dir>', 'Output directory', './generated-cli')
+  .option('-o, --output <dir>', 'Output directory (default: ./generated/<cli-name>)')
   .option('-n, --name <name>', 'CLI binary name (default: derived from spec title)')
-  .action(async (spec: string, opts: { output: string; name?: string }) => {
+  .action(async (spec: string, opts: { output?: string; name?: string }) => {
     try {
       await generate({ spec, output: opts.output, name: opts.name })
     } catch (err: unknown) {
@@ -45,9 +45,9 @@ program
   .command('update')
   .description('Re-generate CLI from updated spec (preserves existing config)')
   .argument('<spec>', 'Path to OpenAPI spec file (.json/.yaml) or URL')
-  .option('-o, --output <dir>', 'Output directory', './generated-cli')
+  .option('-o, --output <dir>', 'Output directory (default: ./generated/<cli-name>)')
   .option('-n, --name <name>', 'CLI binary name')
-  .action(async (spec: string, opts: { output: string; name?: string }) => {
+  .action(async (spec: string, opts: { output?: string; name?: string }) => {
     try {
       await generate({ spec, output: opts.output, name: opts.name, update: true })
     } catch (err: unknown) {

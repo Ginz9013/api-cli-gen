@@ -20,7 +20,8 @@ export async function generate(opts: GenerateOptions): Promise<void> {
   const parsed = analyzeSpec(doc)
 
   const cliName = opts.name ? toKebabCase(opts.name) : toKebabCase(parsed.title) || 'my-api-cli'
-  const outputDir = path.resolve(process.cwd(), opts.output)
+  const relativeOutput = opts.output ?? path.join('generated', cliName)
+  const outputDir = path.resolve(process.cwd(), relativeOutput)
 
   console.log(chalk.blue(`Generating CLI "${cliName}" → ${outputDir}`))
 
@@ -28,6 +29,6 @@ export async function generate(opts: GenerateOptions): Promise<void> {
 
   console.log(chalk.green(`\n✓ CLI "${cliName}" generated successfully!`))
   console.log(chalk.gray(`  Directory : ${outputDir}`))
-  console.log(chalk.gray(`  Run directly : node ${path.join(opts.output, 'dist/index.js')} --help`))
-  console.log(chalk.gray(`  Install globally: cd ${opts.output} && npm link`))
+  console.log(chalk.gray(`  Run directly : node ${path.join(relativeOutput, 'dist/index.js')} --help`))
+  console.log(chalk.gray(`  Install globally: cd ${relativeOutput} && npm link`))
 }
