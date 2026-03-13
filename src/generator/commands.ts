@@ -73,13 +73,8 @@ function genOperation(ep: Endpoint): string {
       try {
         const params = parseParams(paramsArg)
 ${validations}
-        const client = createClient()
+        const client = createClient(!!opts.verbose)
         const url = ${urlExpr}
-        if (opts.verbose) {
-          console.log('[${ep.method}]', url)
-          if (params.query && Object.keys(params.query).length) console.log('Query:', params.query)
-          if (params.body) console.log('Body:', params.body)
-        }
         ${requestCode}
         printResponse(res.data, opts.output)
       } catch (err) {

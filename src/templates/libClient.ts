@@ -2,7 +2,7 @@ export function genLibClient(): string {
   return `import axios from 'axios'
 import { getConfig } from './config.js'
 
-export function createClient() {
+export function createClient(verbose = false) {
   const config = getConfig()
   const client = axios.create({ baseURL: config.baseUrl ?? '' })
 
@@ -23,6 +23,20 @@ export function createClient() {
     } else if (auth.type === 'basic' && auth.username && auth.password) {
       const encoded = Buffer.from(auth.username + ':' + auth.password).toString('base64')
       req.headers['Authorization'] = 'Basic ' + encoded
+    }
+
+    if (verbose) {
+      const base = req.baseURL ?? ''
+      const path = req.url ?? ''
+      console.log('[' + req.method?.toUpperCase() + ']', base + path)
+      const authHeader = req.headers['Authorization'] ?? req.headers['authorization']
+      if (authHeader) {
+        const val = String(authHeader)
+        const masked = val.length > 12 ? val.slice(0, 10) + '***' + val.slice(-4) : '***'
+        console.log('Authorization:', masked)
+      }
+      if (req.params && Object.keys(req.params).length) console.log('Query :', req.params)
+      if (req.data) console.log('Body  :', req.data)
     }
 
     return req

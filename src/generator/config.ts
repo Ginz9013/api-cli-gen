@@ -1,9 +1,15 @@
 import type { ParsedSpec, SecurityScheme } from '../types.js'
 
 function genAuthCommands(schemes: SecurityScheme[]): string {
-  if (schemes.length === 0) {
-    // No securitySchemes defined — expose all auth types as fallback
-    return `
+  // Always expose all auth types — real-world APIs often use auth methods
+  // (e.g. Basic Auth for a login endpoint) that aren't declared in securitySchemes.
+  // If the spec declares an apikey scheme, use its header name / location as the default.
+  const apikeyScheme = schemes.find((s) => s.type === 'apikey')
+  const defaultHeader = apikeyScheme?.paramName ?? 'X-API-Key'
+  const inQuery = apikeyScheme?.in === 'query'
+  const apikeyLocation = inQuery ? 'query param' : `header: ${defaultHeader}`
+
+  return `
   auth
     .command('bearer <token>')
     .description('Set Bearer token  →  Authorization: Bearer <token>')
@@ -22,10 +28,10 @@ function genAuthCommands(schemes: SecurityScheme[]): string {
 
   auth
     .command('apikey <key>')
-    .description('Set API key  →  X-API-Key: <key>')
-    .option('--header <name>', 'Header name', 'X-API-Key')
+    .description('Set API key  →  ${apikeyLocation}')
+    .option('--header <name>', 'Header name', ${JSON.stringify(defaultHeader)})
     .action((key, opts) => {
-      setAuth({ type: 'apikey', key, headerName: opts.header })
+      setAuth({ type: 'apikey', key, headerName: opts.header, inQuery: ${inQuery} })
       console.log(chalk.green('✓ Auth set to API Key (header: ' + opts.header + ')'))
     })
 
@@ -36,89 +42,22 @@ function genAuthCommands(schemes: SecurityScheme[]): string {
       setAuth({ type: 'basic', username, password })
       console.log(chalk.green('✓ Auth set to Basic Auth'))
     })`
-  }
-
-  const blocks: string[] = []
-
-  for (const s of schemes) {
-    if (s.type === 'bearer') {
-      blocks.push(`
-  auth
-    .command('bearer <token>')
-    .description('Set Bearer token  →  Authorization: Bearer <token>')
-    .action((token) => {
-      setAuth({ type: 'bearer', token })
-      console.log(chalk.green('✓ Auth set to Bearer token'))
-    })`)
-    }
-
-    if (s.type === 'apikey') {
-      const defaultHeader = s.paramName ?? 'X-API-Key'
-      const location = s.in === 'query' ? 'query param' : `header: ${defaultHeader}`
-      blocks.push(`
-  auth
-    .command('apikey <key>')
-    .description('Set API key  →  ${location}')
-    .option('--header <name>', 'Header name', ${JSON.stringify(defaultHeader)})
-    .action((key, opts) => {
-      setAuth({ type: 'apikey', key, headerName: opts.header, inQuery: ${s.in === 'query'} })
-      console.log(chalk.green('✓ Auth set to API Key'))
-    })`)
-    }
-
-    if (s.type === 'basic') {
-      blocks.push(`
-  auth
-    .command('basic <username> <password>')
-    .description('Set Basic auth  →  Authorization: Basic <base64>')
-    .action((username, password) => {
-      setAuth({ type: 'basic', username, password })
-      console.log(chalk.green('✓ Auth set to Basic Auth'))
-    })`)
-    }
-
-    if (s.type === 'oauth2') {
-      blocks.push(`
-  auth
-    .command('bearer <token>')
-    .description('Set OAuth2 Bearer token  →  Authorization: Bearer <token>')
-    .action((token) => {
-      setAuth({ type: 'bearer', token })
-      console.log(chalk.green('✓ Auth set to OAuth2 Bearer token'))
-    })`)
-    }
-  }
-
-  // Deduplicate (e.g. multiple oauth2 schemes all map to bearer)
-  return [...new Set(blocks)].join('\n')
 }
 
-function genShowAuth(schemes: SecurityScheme[]): string {
-  const types = schemes.length === 0
-    ? ['bearer', 'token', 'apikey', 'basic']
-    : [...new Set(schemes.map((s) => (s.type === 'oauth2' ? 'bearer' : s.type)))]
-
-  const lines: string[] = [`      const { type, token, key, username, headerName } = cfg.auth`]
-
-  if (types.includes('bearer') || types.includes('token')) {
-    lines.push(`      if (type === 'bearer') {
+function genShowAuth(_schemes: SecurityScheme[]): string {
+  // Always generate display logic for all auth types
+  return [
+    `      const { type, token, key, username, headerName } = cfg.auth`,
+    `      if (type === 'bearer') {
         console.log('Auth     : Bearer ***' + (token?.slice(-4) ?? ''))
       } else if (type === 'token') {
         console.log('Auth     : Token (raw) ***' + (token?.slice(-4) ?? ''))
-      }`)
-  }
-  if (types.includes('apikey')) {
-    lines.push(`      else if (type === 'apikey') {
+      } else if (type === 'apikey') {
         console.log('Auth     : API Key (' + (headerName ?? 'X-API-Key') + ') ***' + (key?.slice(-4) ?? ''))
-      }`)
-  }
-  if (types.includes('basic')) {
-    lines.push(`      else if (type === 'basic') {
+      } else if (type === 'basic') {
         console.log('Auth     : Basic ' + (username ?? '') + ':****')
-      }`)
-  }
-
-  return lines.join('\n')
+      }`,
+  ].join('\n')
 }
 
 function genSecurityHint(schemes: SecurityScheme[]): string {
