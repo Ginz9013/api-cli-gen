@@ -4,6 +4,9 @@
 
 [English](#) | [繁體中文](./README.zh-TW.md)
 
+[![npm version](https://img.shields.io/npm/v/api-cli-gen)](https://www.npmjs.com/package/api-cli-gen)
+[![license](https://img.shields.io/npm/l/api-cli-gen)](./LICENSE)
+
 ---
 
 ## Overview

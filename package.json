@@ -1,7 +1,18 @@
 {
   "name": "api-cli-gen",
   "version": "0.1.0",
-  "description": "Generate a CLI tool from an OpenAPI spec",
+  "description": "Generate a fully functional API CLI from any OpenAPI spec in seconds.",
+  "keywords": ["openapi", "swagger", "cli", "generator", "api"],
+  "license": "MIT",
+  "author": "Ginz9013",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Ginz9013/api-cli-gen.git"
+  },
+  "homepage": "https://github.com/Ginz9013/api-cli-gen#readme",
+  "bugs": {
+    "url": "https://github.com/Ginz9013/api-cli-gen/issues"
+  },
   "type": "module",
   "bin": {
     "api-cli-gen": "./dist/index.js"
