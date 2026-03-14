@@ -20,7 +20,7 @@ export async function generate(opts: GenerateOptions): Promise<void> {
   const parsed = analyzeSpec(doc)
 
   const cliName = opts.name ? toKebabCase(opts.name) : toKebabCase(parsed.title) || 'my-api-cli'
-  const relativeOutput = opts.output ?? path.join('generated', cliName)
+  const relativeOutput = opts.output ?? cliName
   const outputDir = path.resolve(process.cwd(), relativeOutput)
 
   console.log(chalk.blue(`Generating CLI "${cliName}" → ${outputDir}`))

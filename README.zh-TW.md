@@ -15,7 +15,11 @@
 ## 安裝
 
 ```bash
+# 全域安裝
 npm install -g api-cli-gen
+
+# 或直接使用 npx（免安裝，用完即丟）
+npx api-cli-gen generate <spec> --name <cli-name>
 ```
 
 ---
@@ -23,25 +27,31 @@ npm install -g api-cli-gen
 ## 快速開始
 
 ```bash
-# 從本地 spec 產生
-api-cli-gen generate ./petstore.json --name petstore
+# 使用 npx（免全域安裝）
+npx api-cli-gen generate https://petstore3.swagger.io/api/v3/openapi.json --name petstore
 
-# 從遠端 URL 產生
-api-cli-gen generate https://petstore3.swagger.io/api/v3/openapi.json --name petstore
+# 或全域安裝後使用
+api-cli-gen generate ./petstore.json --name petstore
 
 # 預覽會產生哪些指令（不實際寫入檔案）
 api-cli-gen preview https://petstore3.swagger.io/api/v3/openapi.json
 ```
 
-產生完成後，直接使用：
+產生完成後，CLI 會放在 `./<cli-name>/`：
 
 ```bash
-cd generated/petstore
+cd petstore
 
 petstore config set base-url https://petstore3.swagger.io
 petstore config set auth bearer MY_TOKEN
 petstore list
 petstore pet getPetById '{"path":{"petId":1}}'
+```
+
+也可以不全域安裝，直接執行：
+
+```bash
+node petstore/dist/index.js --help
 ```
 
 ---
@@ -59,7 +69,7 @@ Arguments:
   spec                  本地 .json / .yaml 檔案路徑，或遠端 URL
 
 Options:
-  -o, --output <dir>    輸出目錄（預設：./generated/<cli-name>）
+  -o, --output <dir>    輸出目錄（預設：./<cli-name>）
   -n, --name <name>     CLI binary 名稱（預設：從 spec info.title 推導）
 ```
 

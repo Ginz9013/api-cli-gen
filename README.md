@@ -18,7 +18,11 @@
 ## Installation
 
 ```bash
+# Install globally
 npm install -g api-cli-gen
+
+# Or use directly with npx (no installation needed)
+npx api-cli-gen generate <spec> --name <cli-name>
 ```
 
 ---
@@ -26,25 +30,31 @@ npm install -g api-cli-gen
 ## Quick Start
 
 ```bash
-# Generate from a local spec file
-api-cli-gen generate ./petstore.json --name petstore
+# Using npx (one-shot, no global install)
+npx api-cli-gen generate https://petstore3.swagger.io/api/v3/openapi.json --name petstore
 
-# Generate from a remote URL
-api-cli-gen generate https://petstore3.swagger.io/api/v3/openapi.json --name petstore
+# Or with global install
+api-cli-gen generate ./petstore.json --name petstore
 
 # Preview commands that would be generated (no files written)
 api-cli-gen preview https://petstore3.swagger.io/api/v3/openapi.json
 ```
 
-Once generated, use the CLI directly:
+Once generated, the CLI is placed in `./<cli-name>/`:
 
 ```bash
-cd generated/petstore
+cd petstore
 
 petstore config set base-url https://petstore3.swagger.io
 petstore config set auth bearer MY_TOKEN
 petstore list
 petstore pet getPetById '{"path":{"petId":1}}'
+```
+
+Or run without installing globally:
+
+```bash
+node petstore/dist/index.js --help
 ```
 
 ---
@@ -62,7 +72,7 @@ Arguments:
   spec                  Path to a local .json / .yaml file, or a remote URL
 
 Options:
-  -o, --output <dir>    Output directory (default: ./generated/<cli-name>)
+  -o, --output <dir>    Output directory (default: ./<cli-name>)
   -n, --name <name>     CLI binary name (default: derived from spec info.title)
 ```
 
