@@ -1,8 +1,14 @@
 {
   "name": "api-cli-gen",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Generate a fully functional API CLI from any OpenAPI spec in seconds.",
-  "keywords": ["openapi", "swagger", "cli", "generator", "api"],
+  "keywords": [
+    "openapi",
+    "swagger",
+    "cli",
+    "generator",
+    "api"
+  ],
   "license": "MIT",
   "author": "Ginz9013",
   "repository": {
