@@ -21,22 +21,29 @@ export function toSafeFunctionName(tag: string): string {
 }
 
 // Build a URL expression string for the generated TypeScript code.
+// Handles both OpenAPI `{petId}` and Express `:petId` path param styles.
 // e.g. /pet/{petId} → `\`/pet/\${params.path?.['petId']}\``
+// e.g. /pet/:petId  → `\`/pet/\${params.path?.['petId']}\``
 function buildUrlExpr(urlPath: string): string {
-  const converted = urlPath.replace(
-    /\{([^}]+)\}/g,
-    (_, name: string) => `\${params.path?.['${name}']}`,
-  )
+  const converted = urlPath
+    .replace(
+      /\{([^}]+)\}/g,
+      (_, name: string) => `\${params.path?.['${name}']}`,
+    )
+    .replace(
+      /:([a-zA-Z_][a-zA-Z0-9_]*)/g,
+      (_, name: string) => `\${params.path?.['${name}']}`,
+    )
   return '`' + converted + '`'
 }
 
-function buildRequestCode(ep: Endpoint, urlExpr: string): string {
+function buildRequestCode(ep: Endpoint): string {
   const method = ep.method.toLowerCase()
   const withBody = ['post', 'put', 'patch'].includes(method)
   if (withBody) {
-    return `const res = await client.${method}(${urlExpr}, params.body ?? {}, { params: params.query })`
+    return `const res = await client.${method}(url, params.body ?? {}, { params: params.query })`
   }
-  return `const res = await client.${method}(${urlExpr}, { params: params.query })`
+  return `const res = await client.${method}(url, { params: params.query })`
 }
 
 function buildValidations(ep: Endpoint): string {
@@ -59,7 +66,7 @@ function buildValidations(ep: Endpoint): string {
 
 function genOperation(ep: Endpoint): string {
   const urlExpr = buildUrlExpr(ep.path)
-  const requestCode = buildRequestCode(ep, urlExpr)
+  const requestCode = buildRequestCode(ep)
   const validations = buildValidations(ep)
 
   return `
