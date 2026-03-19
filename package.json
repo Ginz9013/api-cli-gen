@@ -1,6 +1,6 @@
 {
   "name": "api-cli-gen",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Generate a fully functional API CLI from any OpenAPI spec in seconds.",
   "keywords": [
     "openapi",
