@@ -31,27 +31,18 @@
 
 ---
 
-### #2 apikey 預設 key 名前後不一致
+### ~~#2 apikey 預設 key 名前後不一致~~ ✅ Fixed
 
-**位置：**
-- [src/generator/config.ts:8](src/generator/config.ts#L8)（生成時預設 header name）
-- [src/templates/libClient.ts:18-22](src/templates/libClient.ts#L18-L22)（runtime fallback）
+**位置：** [src/templates/libClient.ts](src/templates/libClient.ts) / [src/generator/config.ts](src/generator/config.ts)
 
-```ts
-// generator：--header 預設值
-const defaultHeader = apikeyScheme?.paramName ?? 'X-API-Key'
+**Fix：** 選 Option A — 移除所有不可達的 fallback，相信「`setAuth` 一定會寫入 `headerName`」這個 invariant。
+- `req.headers[auth.headerName ?? 'X-API-Key']` → `req.headers[auth.headerName]`
+- `req.params[... auth.headerName ?? 'api_key']` → `req.params[... auth.headerName]`
+- `config show` 的 `(headerName ?? '?')` 也一併移掉
 
-// interceptor：runtime fallback
-if (auth.inQuery) {
-  req.params = { ...req.params, [auth.headerName ?? 'api_key']: auth.key }
-} else {
-  req.headers[auth.headerName ?? 'X-API-Key'] = auth.key
-}
-```
+invariant 由 commander 的 `.option('--header <name>', ..., defaultHeader)` 保證：使用者沒傳 `--header` 也會帶 spec 推導的預設值，`headerName` 不會是 undefined。
 
-**影響：** query 模式的 fallback 是 `'api_key'`，header 模式是 `'X-API-Key'`。理論上 `setAuth` 一定會寫入 `headerName`，fallback 不會被觸發，但兩個常數不一致會讓未來 refactor 時埋雷。
-
-**建議方向：** 抽成單一常數，或移除不可達的 fallback。
+若有人繞過 setAuth（例如手改 config.json 拿掉 headerName），request 會壞在明顯的地方（header key 變成字串 `'undefined'`），比 silent-wrong-default 更容易發現。
 
 ---
 
@@ -129,6 +120,8 @@ Set API key  →  header: X-Tenant-Key  (spec declares: header: X-Tenant-Key, qu
 ## 備註
 
 - ~~#1、#3 是執行時彈性不足 → 直接影響 API 能不能打通~~ ✅ 已修復
-- #2 是實作細節 → 不影響功能但會留技術債（剩餘唯一 issue）
+- ~~#2 是實作細節~~ ✅ 已修復（移除死 fallback）
 - ~~#4 是實作細節~~ ✅ 已修復（description 改為列出所有 schemes）
 - ~~#5、#6 是覆蓋範圍不足~~ ✅ 已修復
+
+**全部 6 個 issue 皆已修復。**

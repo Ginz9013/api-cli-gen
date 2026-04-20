@@ -94,7 +94,7 @@ function genShowAuth(_schemes: SecurityScheme[]): string {
           console.log('Auth     : Token (raw) ***' + (token?.slice(-4) ?? ''))
         } else if (type === 'apikey') {
           const loc = inQuery ? 'query' : 'header'
-          console.log('Auth     : API Key (' + loc + ': ' + (headerName ?? '?') + ') ***' + (key?.slice(-4) ?? ''))
+          console.log('Auth     : API Key (' + loc + ': ' + headerName + ') ***' + (key?.slice(-4) ?? ''))
         } else if (type === 'basic') {
           console.log('Auth     : Basic ' + (username ?? '') + ':****')
         }

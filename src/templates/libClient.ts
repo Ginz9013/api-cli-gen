@@ -14,9 +14,9 @@ export function createClient(verbose = false) {
         req.headers['Authorization'] = auth.token
       } else if (auth.type === 'apikey' && auth.key) {
         if (auth.inQuery) {
-          req.params = { ...req.params, [auth.headerName ?? 'api_key']: auth.key }
+          req.params = { ...req.params, [auth.headerName]: auth.key }
         } else {
-          req.headers[auth.headerName ?? 'X-API-Key'] = auth.key
+          req.headers[auth.headerName] = auth.key
         }
       } else if (auth.type === 'basic' && auth.username && auth.password) {
         const encoded = Buffer.from(auth.username + ':' + auth.password).toString('base64')
