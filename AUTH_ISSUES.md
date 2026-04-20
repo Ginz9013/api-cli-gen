@@ -77,55 +77,58 @@ if (auth.inQuery) {
 
 ---
 
-### #4 多個 apikey scheme 只取第一個
+### ~~#4 多個 apikey scheme 只取第一個~~ ✅ Fixed
 
-**位置：** [src/generator/config.ts:7](src/generator/config.ts#L7)
+**位置：** [src/generator/config.ts](src/generator/config.ts)
 
-```ts
-const apikeyScheme = schemes.find((s) => s.type === 'apikey')
+**Fix：** `schemes.filter(...)` 拿所有 apikey schemes。第一個還是 `--in` / `--header` 的預設值（不破壞單 scheme 的 UX），但 description 會列出全部 schemes，例如：
+
+```
+Set API key  →  header: X-Tenant-Key  (spec declares: header: X-Tenant-Key, query: user_key)
 ```
 
-**影響：** spec 若同時宣告 `X-API-Key`（header）和 `api_key`（query），只會採用第一個當預設。
-
-**建議方向：** 與 #1 一起處理，允許 runtime 指定要用哪個 scheme。
+搭配 #1 的 `--in` + `--header` 選項，使用者可以 runtime 選任何一個 scheme；搭配 #3 的陣列化，還能同時存多個 apikey。
 
 ---
 
-### #5 Swagger 2.0 完全沒抽 security
+### ~~#5 Swagger 2.0 完全沒抽 security~~ ✅ Fixed
 
-**位置：** [src/parser/analyzer.ts:183](src/parser/analyzer.ts#L183)
+**位置：** [src/parser/analyzer.ts](src/parser/analyzer.ts)
 
-```ts
-return { title, version, baseUrl, security: [], tags: ..., endpoints }
-```
+**Fix：** 實作 `extractSecurityV2` 處理 v2 `securityDefinitions`：
+- `type: basic` → bearer/basic scheme
+- `type: apiKey` → apikey scheme（保留 `name` + `in`）
+- `type: oauth2` → oauth2 scheme；v2 `flow: 'application'` 對應 v3 clientCredentials，會塞 `clientCredentialsUrl`；其他 flow 只塞 `tokenUrl` 當 hint
 
-**影響：**
-- `config show` 不會顯示 auth 提示
-- apikey 的 `--header` 預設值永遠是 `'X-API-Key'`，即使 spec 寫的是別的名字
-- `inQuery` 永遠是 `false`
-
-**建議方向：** 為 v2 實作對應的 `extractSecurityV2`，讀 `doc.securityDefinitions`。
+驗證：v2 spec 宣告 `apiKey name=X-Custom-Key in=header` 會變成 apikey 的預設 header name；`oauth2 flow=application tokenUrl=...` 會自動加出 `auth oauth2 <id> <secret>` 指令。
 
 ---
 
-### #6 oauth2 沒有對應的 setter
+### ~~#6 oauth2 沒有對應的 setter~~ ✅ Fixed
 
-**位置：** [src/generator/config.ts:67](src/generator/config.ts#L67)
+**位置：** [src/generator/config.ts](src/generator/config.ts) / [src/parser/analyzer.ts](src/parser/analyzer.ts) / [src/types.ts](src/types.ts)
 
-```ts
-if (s.type === 'oauth2') return `OAuth2 Bearer token`
-```
+**Fix：**
+- `SecurityScheme` 加 `tokenUrl` / `clientCredentialsUrl` 兩個欄位，供 oauth2 使用。
+- `genSecurityHint` 對 oauth2 的提示依情況分三級：
+  - 有 `clientCredentialsUrl` → `OAuth2 client_credentials → use: auth oauth2 <id> <secret>`
+  - 只有 `tokenUrl`（e.g. authorizationCode / password / implicit）→ 印出 tokenUrl 並提示用 `auth bearer`
+  - 都沒有 → `fetch token externally, use: auth bearer <token>`
+- **如果** 任何 oauth2 scheme 有 `clientCredentialsUrl`，產生的 CLI 會自動多出一個指令：
+  ```
+  <cli> config set auth oauth2 <clientId> <clientSecret> [--scope <scope>]
+  ```
+  它會對 tokenUrl 發 `POST` (`grant_type=client_credentials` + Basic Auth)，取得 `access_token` 後存成 bearer。失敗時印錯誤並 exit 1。
 
-**影響：** spec 宣告 oauth2 時只會在 `config show` 的提示出現，但產生的 CLI 沒有 `auth oauth2` 指令。使用者只能自己去拿 token 後用 `auth bearer <token>`，體驗不佳。
-
-**建議方向：**
-- 短期：在 hint 明確寫「請先用其他工具取得 token，再 `config set auth bearer <token>`」
-- 長期：實作 client credentials flow，讓 CLI 自己換 token
+**已知限制：**
+- 沒有 auto-refresh：access_token 過期後使用者要自己重跑一次。
+- 只支援 client_credentials 流程；authorization_code / password / implicit 仍需使用者手動拿 token 後用 `auth bearer`。
 
 ---
 
 ## 備註
 
 - ~~#1、#3 是執行時彈性不足 → 直接影響 API 能不能打通~~ ✅ 已修復
-- #2、#4 是實作細節 → 不影響功能但會留技術債
-- #5、#6 是覆蓋範圍不足 → 影響特定 spec 類型的使用者體驗
+- #2 是實作細節 → 不影響功能但會留技術債（剩餘唯一 issue）
+- ~~#4 是實作細節~~ ✅ 已修復（description 改為列出所有 schemes）
+- ~~#5、#6 是覆蓋範圍不足~~ ✅ 已修復

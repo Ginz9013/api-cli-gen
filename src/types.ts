@@ -37,6 +37,8 @@ export interface SecurityScheme {
   type: 'bearer' | 'apikey' | 'basic' | 'oauth2'
   in?: 'header' | 'query' | 'cookie'
   paramName?: string
+  tokenUrl?: string
+  clientCredentialsUrl?: string
 }
 
 export interface GenerateOptions {

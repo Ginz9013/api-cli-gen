@@ -3,11 +3,46 @@ import type { ParsedSpec, SecurityScheme } from '../types.js'
 function genAuthCommands(schemes: SecurityScheme[]): string {
   // Always expose all auth types — real-world APIs often use auth methods
   // (e.g. Basic Auth for a login endpoint) that aren't declared in securitySchemes.
-  // If the spec declares an apikey scheme, use its header name / location as the default.
-  const apikeyScheme = schemes.find((s) => s.type === 'apikey')
-  const defaultHeader = apikeyScheme?.paramName ?? 'X-API-Key'
-  const defaultIn = apikeyScheme?.in === 'query' ? 'query' : 'header'
-  const apikeyLocation = `${defaultIn}: ${defaultHeader}`
+  const apikeySchemes = schemes.filter((s) => s.type === 'apikey')
+  const primaryApikey = apikeySchemes[0]
+  const defaultHeader = primaryApikey?.paramName ?? 'X-API-Key'
+  const defaultIn = primaryApikey?.in === 'query' ? 'query' : 'header'
+  let apikeyDesc = `Set API key  →  ${defaultIn}: ${defaultHeader}`
+  if (apikeySchemes.length > 1) {
+    const list = apikeySchemes
+      .map((s) => `${s.in ?? 'header'}: ${s.paramName ?? '?'}`)
+      .join(', ')
+    apikeyDesc += `  (spec declares: ${list})`
+  }
+
+  const ccScheme = schemes.find((s) => s.type === 'oauth2' && s.clientCredentialsUrl)
+
+  const oauth2Command = ccScheme
+    ? `
+
+  auth
+    .command('oauth2 <clientId> <clientSecret>')
+    .description('Exchange OAuth2 client credentials for a bearer token')
+    .option('--scope <scope>', 'OAuth2 scope (space-separated)')
+    .action(async (clientId, clientSecret, opts) => {
+      try {
+        const body = new URLSearchParams({ grant_type: 'client_credentials' })
+        if (opts.scope) body.append('scope', opts.scope)
+        const res = await axios.post(${JSON.stringify(ccScheme.clientCredentialsUrl)}, body, {
+          auth: { username: clientId, password: clientSecret },
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        })
+        const token = res.data?.access_token
+        if (!token) throw new Error('No access_token in response: ' + JSON.stringify(res.data))
+        setAuth({ type: 'bearer', token })
+        console.log(chalk.green('✓ Got access token, saved as Bearer'))
+      } catch (e) {
+        const detail = e.response?.data ? JSON.stringify(e.response.data) : e.message
+        console.error(chalk.red('Error: ' + detail))
+        process.exit(1)
+      }
+    })`
+    : ''
 
   return `
   auth
@@ -28,7 +63,7 @@ function genAuthCommands(schemes: SecurityScheme[]): string {
 
   auth
     .command('apikey <key>')
-    .description('Set API key  →  ${apikeyLocation}')
+    .description(${JSON.stringify(apikeyDesc)})
     .option('--in <location>', 'Where to send: header|query', ${JSON.stringify(defaultIn)})
     .option('--header <name>', 'Header or query param name', ${JSON.stringify(defaultHeader)})
     .action((key, opts) => {
@@ -47,7 +82,7 @@ function genAuthCommands(schemes: SecurityScheme[]): string {
     .action((username, password) => {
       setAuth({ type: 'basic', username, password })
       console.log(chalk.green('✓ Auth set to Basic Auth'))
-    })`
+    })${oauth2Command}`
 }
 
 function genShowAuth(_schemes: SecurityScheme[]): string {
@@ -70,8 +105,12 @@ function genSecurityHint(schemes: SecurityScheme[]): string {
   if (schemes.length === 0) return ''
   const hints = schemes.map((s) => {
     if (s.type === 'bearer') return `Bearer token (Authorization: Bearer <token>)`
-    if (s.type === 'oauth2') return `OAuth2 Bearer token`
-    if (s.type === 'apikey') return `API Key (${s.in}: ${s.paramName ?? 'X-API-Key'})`
+    if (s.type === 'oauth2') {
+      if (s.clientCredentialsUrl) return `OAuth2 client_credentials → use: auth oauth2 <id> <secret>`
+      if (s.tokenUrl) return `OAuth2 (tokenUrl: ${s.tokenUrl}) → fetch externally, use: auth bearer <token>`
+      return `OAuth2 → fetch token externally, use: auth bearer <token>`
+    }
+    if (s.type === 'apikey') return `API Key (${s.in ?? 'header'}: ${s.paramName ?? 'X-API-Key'})`
     if (s.type === 'basic') return `Basic Auth (username + password)`
     return s.type
   })
@@ -82,9 +121,11 @@ export function genConfigCommand(parsed: ParsedSpec): string {
   const authCommands = genAuthCommands(parsed.security)
   const showAuth = genShowAuth(parsed.security)
   const securityHint = genSecurityHint(parsed.security)
+  const needsAxios = parsed.security.some((s) => s.type === 'oauth2' && s.clientCredentialsUrl)
+  const axiosImport = needsAxios ? `\nimport axios from 'axios'` : ''
 
   return `import { Command } from 'commander'
-import chalk from 'chalk'
+import chalk from 'chalk'${axiosImport}
 import { getConfig, setBaseUrl, setAuth, resetConfig } from '../lib/config.js'
 
 export function createConfigCommand() {

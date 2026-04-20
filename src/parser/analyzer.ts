@@ -105,7 +105,41 @@ function extractSecurityV3(doc: OpenAPIV3.Document): SecurityScheme[] {
       const ak = s as OpenAPIV3.ApiKeySecurityScheme
       schemes.push({ name, type: 'apikey', in: ak.in as SecurityScheme['in'], paramName: ak.name })
     } else if (s.type === 'oauth2') {
-      schemes.push({ name, type: 'oauth2' })
+      const oauth = s as OpenAPIV3.OAuth2SecurityScheme
+      const flows = oauth.flows ?? {}
+      const clientCredentialsUrl = flows.clientCredentials?.tokenUrl
+      const tokenUrl =
+        clientCredentialsUrl ||
+        flows.authorizationCode?.tokenUrl ||
+        flows.password?.tokenUrl ||
+        flows.implicit?.authorizationUrl
+      schemes.push({ name, type: 'oauth2', tokenUrl, clientCredentialsUrl })
+    }
+  }
+  return schemes
+}
+
+function extractSecurityV2(doc: OpenAPIV2.Document): SecurityScheme[] {
+  const schemes: SecurityScheme[] = []
+  const definitions = doc.securityDefinitions
+  if (!definitions) return schemes
+
+  for (const [name, def] of Object.entries(definitions)) {
+    const s = def as Record<string, unknown>
+    if (s['type'] === 'basic') {
+      schemes.push({ name, type: 'basic' })
+    } else if (s['type'] === 'apiKey') {
+      schemes.push({
+        name,
+        type: 'apikey',
+        in: s['in'] as SecurityScheme['in'],
+        paramName: s['name'] as string | undefined,
+      })
+    } else if (s['type'] === 'oauth2') {
+      const flow = s['flow'] as string | undefined
+      const tokenUrl = (s['tokenUrl'] as string | undefined) || (s['authorizationUrl'] as string | undefined)
+      const clientCredentialsUrl = flow === 'application' ? (s['tokenUrl'] as string | undefined) : undefined
+      schemes.push({ name, type: 'oauth2', tokenUrl, clientCredentialsUrl })
     }
   }
   return schemes
@@ -180,5 +214,6 @@ function analyzeV2(doc: OpenAPIV2.Document): ParsedSpec {
     }
   }
 
-  return { title, version, baseUrl, security: [], tags: Array.from(tagSet), endpoints }
+  const security = extractSecurityV2(doc)
+  return { title, version, baseUrl, security, tags: Array.from(tagSet), endpoints }
 }
