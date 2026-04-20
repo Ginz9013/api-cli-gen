@@ -109,14 +109,16 @@ Options:
 # Set the API base URL
 <cli> config set base-url https://api.example.com
 
-# Set authentication
+# Set authentication (multiple auths can coexist — see "Authentication" below)
 <cli> config set auth bearer <token>
-<cli> config set auth token <token>           # raw token, no "Bearer" prefix
-<cli> config set auth apikey <key>            # default: X-API-Key header
-<cli> config set auth apikey <key> --header X-Custom-Header
+<cli> config set auth token <token>                                # raw token, no "Bearer" prefix
+<cli> config set auth apikey <key>                                 # uses spec-derived defaults
+<cli> config set auth apikey <key> --in header --header X-API-Key
+<cli> config set auth apikey <key> --in query  --header api_key
 <cli> config set auth basic <username> <password>
+<cli> config set auth oauth2 <clientId> <clientSecret>             # only emitted when spec declares a clientCredentials flow
 
-# View current config (tokens are masked)
+# View current config (tokens are masked, all stored auths listed)
 <cli> config show
 
 # Clear all config
@@ -198,16 +200,29 @@ Authorization: Bearer eyJhbGci***n6Yw
 
 ## Authentication
 
-All four auth types are always available in the generated CLI, regardless of what is declared in the spec's `securitySchemes`:
+Four auth types are always available in the generated CLI, regardless of what the spec's `securitySchemes` declares. A fifth (`oauth2`) is only emitted when the spec declares a `clientCredentials` flow.
 
 | Command | Sends |
 |---------|-------|
 | `auth bearer <token>` | `Authorization: Bearer <token>` |
 | `auth token <token>` | `Authorization: <token>` (no prefix) |
-| `auth apikey <key>` | `X-API-Key: <key>` (header or query param) |
+| `auth apikey <key> [--in header\|query] [--header <name>]` | Sends `<name>: <key>` in the chosen location. Defaults derived from the spec. |
 | `auth basic <user> <pass>` | `Authorization: Basic <base64>` |
+| `auth oauth2 <clientId> <clientSecret> [--scope <scope>]` | POSTs `grant_type=client_credentials` to the spec's tokenUrl and stores the returned access_token as a Bearer. |
 
-If the spec declares `securitySchemes`, `config show` will display the recommended auth method for that API.
+### Multiple authentications
+
+Since 0.2.0, `config.auths` is a list and multiple auth entries coexist. This is useful when an API needs, say, a tenant `X-API-Key` header **plus** a user Bearer token. Rules:
+
+- Setting `bearer` / `token` / `basic` replaces any existing entry of the same type.
+- Setting `apikey` is keyed on `(inQuery, headerName)` — you can store multiple apikeys as long as their name/location differ.
+- All stored auths are applied to every request in order. If two entries write the same header (e.g. `bearer` + `basic`), the later one wins.
+- Legacy single-auth `config.json` from pre-0.2.0 is auto-migrated on read.
+- `config reset` clears everything; there is no per-entry removal.
+
+### Spec-driven hints
+
+If the spec declares `securitySchemes`, `config show` prints a one-line hint of what that API expects. For OAuth2 without a `clientCredentials` flow, the hint shows the `tokenUrl` and points you at `auth bearer <token>` (fetch the token externally).
 
 ---
 

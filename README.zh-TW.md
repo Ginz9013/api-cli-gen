@@ -106,14 +106,16 @@ Options:
 # 設定 API base URL
 <cli> config set base-url https://api.example.com
 
-# 設定認證（四種方式）
+# 設定認證（多組可並存，詳見下方「認證說明」）
 <cli> config set auth bearer <token>
-<cli> config set auth token <token>           # 不含 Bearer 前綴的原始 token
-<cli> config set auth apikey <key>            # 預設使用 X-API-Key header
-<cli> config set auth apikey <key> --header X-Custom-Header
+<cli> config set auth token <token>                                # 不含 Bearer 前綴的原始 token
+<cli> config set auth apikey <key>                                 # 使用 spec 推導的預設值
+<cli> config set auth apikey <key> --in header --header X-API-Key
+<cli> config set auth apikey <key> --in query  --header api_key
 <cli> config set auth basic <username> <password>
+<cli> config set auth oauth2 <clientId> <clientSecret>             # spec 宣告 clientCredentials flow 時才會出現
 
-# 查看目前設定（token 遮蔽顯示）
+# 查看目前設定（token 遮蔽顯示、列出所有已存 auth）
 <cli> config show
 
 # 清除所有設定
@@ -195,16 +197,29 @@ Authorization: Bearer eyJhbGci***n6Yw
 
 ## 認證說明
 
-產生的 CLI 無論 OpenAPI spec 的 `securitySchemes` 有無宣告，皆支援以下四種認證方式：
+產生的 CLI 無論 OpenAPI spec 的 `securitySchemes` 有無宣告，皆支援以下四種認證方式；第五種 `oauth2` 只有當 spec 宣告 `clientCredentials` flow 時才會生成。
 
 | 指令 | 傳送方式 |
 |------|----------|
 | `auth bearer <token>` | `Authorization: Bearer <token>` |
 | `auth token <token>` | `Authorization: <token>`（無前綴） |
-| `auth apikey <key>` | `X-API-Key: <key>`（header 或 query） |
+| `auth apikey <key> [--in header\|query] [--header <name>]` | 以 `<name>: <key>` 放在指定位置；預設值從 spec 推導 |
 | `auth basic <user> <pass>` | `Authorization: Basic <base64>` |
+| `auth oauth2 <clientId> <clientSecret> [--scope <scope>]` | 對 spec 的 tokenUrl 發 `POST grant_type=client_credentials`，取回 access_token 後存成 Bearer |
 
-若 spec 有宣告 `securitySchemes`，執行 `config show` 時會顯示該 API 建議的認證方式。
+### 多組認證並存
+
+從 0.2.0 起 `config.auths` 變成陣列，可以同時存多個認證。例如 API 要求「租戶 `X-API-Key` header」加上「使用者 Bearer token」的組合。規則：
+
+- 設 `bearer` / `token` / `basic` 會取代同類型的既有項目。
+- 設 `apikey` 依 `(inQuery, headerName)` 去重，只要名稱/位置不同就能同時存多組。
+- 每次 request 會依序套用所有已存 auth；若兩個項目寫同一個 header（例如 `bearer` + `basic`），後者覆蓋前者。
+- 0.2.0 之前的單一 auth 格式 `config.json` 在讀取時會自動遷移。
+- `config reset` 清光全部；沒有單獨移除某個 auth 的指令。
+
+### Spec 提示
+
+若 spec 有宣告 `securitySchemes`，`config show` 會印一行提示該 API 預期的認證方式。OAuth2 沒有 `clientCredentials` flow 時，提示會印出 `tokenUrl` 並建議用 `auth bearer <token>`（使用者自己先用其他工具拿到 token）。
 
 ---
 
