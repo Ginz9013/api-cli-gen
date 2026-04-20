@@ -6,8 +6,8 @@ function genAuthCommands(schemes: SecurityScheme[]): string {
   // If the spec declares an apikey scheme, use its header name / location as the default.
   const apikeyScheme = schemes.find((s) => s.type === 'apikey')
   const defaultHeader = apikeyScheme?.paramName ?? 'X-API-Key'
-  const inQuery = apikeyScheme?.in === 'query'
-  const apikeyLocation = inQuery ? 'query param' : `header: ${defaultHeader}`
+  const defaultIn = apikeyScheme?.in === 'query' ? 'query' : 'header'
+  const apikeyLocation = `${defaultIn}: ${defaultHeader}`
 
   return `
   auth
@@ -29,10 +29,16 @@ function genAuthCommands(schemes: SecurityScheme[]): string {
   auth
     .command('apikey <key>')
     .description('Set API key  →  ${apikeyLocation}')
-    .option('--header <name>', 'Header name', ${JSON.stringify(defaultHeader)})
+    .option('--in <location>', 'Where to send: header|query', ${JSON.stringify(defaultIn)})
+    .option('--header <name>', 'Header or query param name', ${JSON.stringify(defaultHeader)})
     .action((key, opts) => {
-      setAuth({ type: 'apikey', key, headerName: opts.header, inQuery: ${inQuery} })
-      console.log(chalk.green('✓ Auth set to API Key (header: ' + opts.header + ')'))
+      if (opts.in !== 'header' && opts.in !== 'query') {
+        console.error(chalk.red('Error: --in must be "header" or "query"'))
+        process.exit(1)
+      }
+      const inQuery = opts.in === 'query'
+      setAuth({ type: 'apikey', key, headerName: opts.header, inQuery })
+      console.log(chalk.green('✓ Auth set to API Key (' + opts.in + ': ' + opts.header + ')'))
     })
 
   auth
@@ -45,19 +51,19 @@ function genAuthCommands(schemes: SecurityScheme[]): string {
 }
 
 function genShowAuth(_schemes: SecurityScheme[]): string {
-  // Always generate display logic for all auth types
-  return [
-    `      const { type, token, key, username, headerName } = cfg.auth`,
-    `      if (type === 'bearer') {
-        console.log('Auth     : Bearer ***' + (token?.slice(-4) ?? ''))
-      } else if (type === 'token') {
-        console.log('Auth     : Token (raw) ***' + (token?.slice(-4) ?? ''))
-      } else if (type === 'apikey') {
-        console.log('Auth     : API Key (' + (headerName ?? 'X-API-Key') + ') ***' + (key?.slice(-4) ?? ''))
-      } else if (type === 'basic') {
-        console.log('Auth     : Basic ' + (username ?? '') + ':****')
-      }`,
-  ].join('\n')
+  return `      for (const auth of cfg.auths) {
+        const { type, token, key, username, headerName, inQuery } = auth
+        if (type === 'bearer') {
+          console.log('Auth     : Bearer ***' + (token?.slice(-4) ?? ''))
+        } else if (type === 'token') {
+          console.log('Auth     : Token (raw) ***' + (token?.slice(-4) ?? ''))
+        } else if (type === 'apikey') {
+          const loc = inQuery ? 'query' : 'header'
+          console.log('Auth     : API Key (' + loc + ': ' + (headerName ?? '?') + ') ***' + (key?.slice(-4) ?? ''))
+        } else if (type === 'basic') {
+          console.log('Auth     : Basic ' + (username ?? '') + ':****')
+        }
+      }`
 }
 
 function genSecurityHint(schemes: SecurityScheme[]): string {
@@ -108,7 +114,7 @@ ${authCommands}
     .action(() => {
       const cfg = getConfig()
       console.log('Base URL :', cfg.baseUrl ?? chalk.gray('(not set)'))${securityHint}
-      if (!cfg.auth) {
+      if (!cfg.auths || cfg.auths.length === 0) {
         console.log('Auth     :', chalk.gray('(not set)'))
         return
       }

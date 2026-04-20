@@ -8,7 +8,12 @@ const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json')
 
 function readConfig() {
   try {
-    return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'))
+    const cfg = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'))
+    if (cfg.auth && !cfg.auths) {
+      cfg.auths = [cfg.auth]
+      delete cfg.auth
+    }
+    return cfg
   } catch {
     return {}
   }
@@ -17,6 +22,13 @@ function readConfig() {
 function writeConfig(config) {
   fs.mkdirSync(CONFIG_DIR, { recursive: true })
   fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf-8')
+}
+
+function authKey(a) {
+  if (a.type === 'apikey') {
+    return 'apikey:' + (a.inQuery ? 'q' : 'h') + ':' + (a.headerName || '')
+  }
+  return a.type
 }
 
 export function getConfig() {
@@ -31,7 +43,10 @@ export function setBaseUrl(url) {
 
 export function setAuth(auth) {
   const config = readConfig()
-  config.auth = auth
+  const existing = config.auths || []
+  const k = authKey(auth)
+  config.auths = existing.filter((a) => authKey(a) !== k).concat([auth])
+  delete config.auth
   writeConfig(config)
 }
 
